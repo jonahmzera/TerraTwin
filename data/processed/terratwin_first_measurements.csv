@@ -1,0 +1,3 @@
+site,dataset,provider,native_resolution,crs,window_km,pixel_size_m,valid_pixels_pct,elev_min_m,elev_max_m,elev_mean_m,relief_m,slope_mean_deg,slope_max_deg,roughness_tri_m
+Chyulu Hills (Earth),Copernicus DEM GLO-30 (DSM),ESA / Copernicus,"30 m, resampled by averaging to ~200 m",EPSG:4326,50,200.0,100.0,734.4,2158.2,1156.4,1423.8,3.04,30.97,8.69
+Elysium Planitia (Mars),MOLA-HRSC blended DEM v2,"USGS Astrogeology (MOLA: NASA, HRSC: ESA/DLR)",200 m (read at native resolution),ESRI:104971 (Mars 2000 geographic),50,200.0,100.0,-3345.0,-2551.0,-2715.7,794.0,0.93,38.6,2.65
