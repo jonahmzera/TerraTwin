@@ -2,6 +2,9 @@
 
 **Aether Labs | NASA Space Apps Challenge 2026**
 
+**Live app: https://terratwin-aether.streamlit.app/** (no sign-in needed; if it has been idle, click the wake-up
+button and wait about 30 seconds)
+
 TerraTwin searches the whole Earth for places that can help us prepare to explore the Moon and Mars. It compares
 Earth with five real landing sites and candidate base regions, using open NASA and partner-agency data. For every
 comparison, it reports how similar the places are in each dimension, how confident that score is, where the
