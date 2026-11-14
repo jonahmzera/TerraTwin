@@ -1,0 +1,6 @@
+# Everything needed to re-run the data pipeline and the tests, on top of the app packages.
+-r requirements.txt
+matplotlib==3.11.2
+rasterio==1.5.2
+pyproj==3.8.0
+pytest==9.2.0

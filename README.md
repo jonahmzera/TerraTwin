@@ -80,6 +80,7 @@ The app reads the CSV files in `data/processed/`, so it works offline and starts
 ## Reproduce every number
 
 ```bash
+pip install -r requirements-pipeline.txt
 python -m scripts.run_pipeline --step all
 ```
 
