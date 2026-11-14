@@ -5,4 +5,5 @@ numpy==2.5.4
 pandas==3.1.1
 plotly==7.1.0
 requests==2.34.2
-pyarrow==21.0.0
+# Not pinned exactly: 21.0.0 has no Python 3.14 package (Streamlit Cloud's default), newer versions do.
+pyarrow>=21.0.0
