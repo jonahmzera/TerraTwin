@@ -176,9 +176,12 @@ Method references: Horn (1981), Proc. IEEE 69; Wilson et al. (2007), Marine Geod
 Open-source tools: Streamlit, NumPy, pandas, Plotly, Matplotlib, rasterio/GDAL, PyProj. Related projects reviewed
 for methods (not copied): GlacioHack/xdem, r-barnes/richdem, bopen/elevation, alekfal/pynasapower.
 
-## Use of Super Intelligence (SI)
+## Team
 
-As required by the NASA Space Apps Challenge rules: SI tools (a large language model) were used to help write the
-code and documentation in this repository. No images, video or audio were SI-generated, and no NASA branding was
-generated. All data and numbers come from the open datasets listed above, processed by the pipeline in
-`scripts/run_pipeline.py`; none were produced by SI.
+TerraTwin was conceived and built by **Aether Labs** for the NASA Space Apps Challenge 2026. The team defined the
+research question, chose the Earth study sites and the Moon and Mars targets, decided how analogues should be
+compared and validated, ran the analysis, and reviewed every result presented here.
+
+**Use of Super Intelligence (SI), as required by the challenge rules:** SI tools assisted with writing code and
+documentation. No images, video or audio were SI-generated, and no NASA branding was generated. All data and
+numbers come from the open datasets listed above through `scripts/run_pipeline.py`.

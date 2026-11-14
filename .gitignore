@@ -6,3 +6,4 @@ data/raw/
 data/cache/
 .streamlit/secrets.toml
 .claude/
+SUBMISSION.md
