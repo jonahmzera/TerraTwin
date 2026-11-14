@@ -1,94 +1,94 @@
-from pathlib import Path
-
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
-from config.weights import TOPOGRAPHY_VARIABLES
-from modules.similarity_scoring import score_variables
+from config.study_locations import EARTH_LIMITS, TARGETS
+from modules.comparison_engine import (compare, image_path, load_earth_sites, load_targets, ranking, require,
+                                       site_label)
+from modules.mapping import GROUP_LABELS
+from modules.similarity_scoring import DEFAULT_WEIGHTS, DIMENSIONS, holds_and_breaks
 
 st.set_page_config(page_title="TerraTwin | Comparison Lab", page_icon="🔬", layout="wide")
 
 st.title("🔬 Comparison Lab")
-st.write("Chyulu Hills (Earth) vs Elysium Planitia (Mars): topography only, provisional.")
+st.write("Compare any Earth site with any Moon or Mars target, dimension by dimension.")
 
-CSV = Path(__file__).resolve().parents[1] / "data" / "processed" / "terratwin_first_measurements.csv"
+sites, targets = load_earth_sites(), load_targets()
+require(sites, targets)
 
-if not CSV.exists():
-    st.error(f"Measurements file not found: {CSV}. Run the Colab notebook and save the CSV there.")
-    st.stop()
+c1, c2 = st.columns(2)
+target_key = c1.selectbox("Moon or Mars target", list(TARGETS), format_func=lambda k: TARGETS[k]["name"])
+ranked = ranking(target_key)
+site_key = c2.selectbox(
+    "Earth site (best match first)", ranked["key"],
+    format_func=lambda k: f"{site_label(ranked.set_index('key').loc[k])} "
+                          f"[{GROUP_LABELS[ranked.set_index('key').loc[k, 'group']]}]",
+)
 
-data = pd.read_csv(CSV).set_index("site")
-earth = data.loc["Chyulu Hills (Earth)"]
-mars = data.loc["Elysium Planitia (Mars)"]
-
-# ---- Weights (adjustable) ----
-st.sidebar.header("Variable weights")
-st.sidebar.caption("Provisional values. They are rescaled to add up to 100%.")
-raw_weights = {}
-for key, cfg in TOPOGRAPHY_VARIABLES.items():
-    raw_weights[key] = st.sidebar.slider(cfg["label"], 0, 100, cfg["default_weight"])
-
-total_w = sum(raw_weights.values())
-if total_w == 0:
+# ---- Weights ----
+st.sidebar.header("Dimension weights")
+st.sidebar.caption("How much each dimension counts. Rescaled to 100%. Equal weights are the default; "
+                   "a landing-site engineer might weight terrain and mobility higher, a geologist geology.")
+weights = {d: st.sidebar.slider(label, 0, 100, DEFAULT_WEIGHTS[d]) for d, label in DIMENSIONS.items()}
+if sum(weights.values()) == 0:
     st.warning("All weights are zero. Move at least one slider above zero.")
     st.stop()
 
-# ---- Variable-by-variable comparison (shared with the Reports page) ----
-table, overall = score_variables(
-    earth,
-    mars,
-    TOPOGRAPHY_VARIABLES,
-    weights=raw_weights,
-    earth_label="Chyulu Hills",
-    planet_label="Elysium Planitia",
-)
-usable = table.dropna(subset=["Similarity (0-100)"])
+result = compare(site_key, target_key, tuple(weights.items()))
+site = sites.set_index("key").loc[site_key]
+t = TARGETS[target_key]
 
-# ---- Results ----
-c1, c2, c3 = st.columns(3)
-c1.metric("Topography similarity (provisional)", "n/a" if overall is None else f"{overall:.1f} / 100")
-c2.metric("Variables compared", f"{len(usable)} of {len(table)}")
-c3.metric("Categories with data", "1 of 5")
+# ---- Headline ----
+m1, m2, m3 = st.columns(3)
+m1.metric("Overall analogue score", "n/a" if result["overall"] is None else f"{result['overall']:.0f} / 100",
+          border=True)
+m2.metric("Uncertainty band (5th-95th pct)",
+          "n/a" if result["p5"] is None else f"{result['p5']:.0f} to {result['p95']:.0f}", border=True,
+          help="Spread of the score when weights and comparison ranges are varied at random (500 runs).")
+m3.metric("Data coverage", f"{result['coverage']:.0f}%", border=True,
+          help="Share of the weighted dimensions that have data for this site.")
 
-st.subheader("Measurements and similarity")
-st.dataframe(table, width="stretch", hide_index=True)
+# ---- Side by side ----
+a, b = st.columns(2)
+with a:
+    st.markdown(f"**Earth: {site_label(site)}**")
+    img = image_path("earth", site_key)
+    if img:
+        st.image(str(img), alt=f"Shaded relief of {site['name']}", width="stretch")
+with b:
+    st.markdown(f"**{t['body']}: {t['name']}**")
+    img = image_path("target", target_key)
+    if img:
+        st.image(str(img), alt=f"Shaded relief of {t['name']}", width="stretch")
+st.caption("Both panels show a 50 km x 50 km window at 200 m pixels, at the same scale.")
 
-fig = px.bar(
-    usable,
-    x="Variable",
-    y="Similarity (0-100)",
-    range_y=[0, 100],
-    title="Per-variable similarity",
-)
-st.plotly_chart(fig, width="stretch")
+# ---- Dimension scores ----
+st.subheader("Scores by dimension")
+dims = pd.DataFrame([{"Dimension": label, "Score": result["dims"].get(d)} for d, label in DIMENSIONS.items()])
+st.bar_chart(dims, x="Dimension", y="Score", horizontal=True, y_label="Similarity (0-100)", x_label="",
+             sort=False)
 
-st.download_button(
-    "Download comparison as CSV",
-    table.to_csv(index=False),
-    file_name="chyulu_vs_elysium_topography.csv",
-)
+holds, breaks = holds_and_breaks(result["table"])
+h, br = st.columns(2)
+with h:
+    st.success("\n".join(f"- {x}" for x in holds) or "No variable reached 70.", title="Where the analogy holds")
+with br:
+    st.error("\n".join(f"- {x}" for x in breaks + EARTH_LIMITS[t["body"]]), title="Where it breaks down")
 
-# ---- Data sources ----
-st.subheader("Data sources")
+st.subheader("All variables")
+table = result["table"].copy()
+table["earth"] = table["earth"].astype(str)
+table["target"] = table["target"].astype(str)
 st.dataframe(
-    data[["dataset", "provider", "native_resolution", "crs", "window_km", "pixel_size_m", "valid_pixels_pct"]].T.astype(str),
-    width="stretch",
+    table[["dimension", "variable", "earth", "target", "similarity", "scale"]],
+    hide_index=True,
+    column_config={
+        "similarity": st.column_config.ProgressColumn("Similarity", min_value=0, max_value=100, format="%.0f"),
+        "scale": st.column_config.TextColumn("Scale or match"),
+    },
+    alt="All compared variables with similarity",
 )
 
-# ---- Limitations ----
-st.subheader("Limitations")
-st.warning(
-    "**Do not treat this score as evidence of equivalence.** It only compares topography, "
-    "using weights and comparison ranges that are provisional assumptions. "
-    "Changing the study window or the ranges changes the score.\n\n"
-    "- **Geology, geomorphology, environment and operational relevance are not compared yet** (no data loaded).\n"
-    "- **Study windows are 50 km boxes** around approximate centre points, not surveyed boundaries. "
-    "The Chyulu window was checked on a map by the team: its highest pixel falls inside the Chyulu Hills, not Kilimanjaro.\n"
-    "- Both sites are read at the same ~200 m pixel size so slope and roughness are comparable. "
-    "The Earth data is natively 30 m and was averaged down.\n"
-    "- Earth data is a surface model (DSM), so vegetation can affect roughness. Mars data is a MOLA/HRSC blend.\n"
-    "- Absolute elevation is not compared because Earth and Mars use different reference surfaces.\n"
-    "- Mars maximum slope (38.6°) may come from a single extreme pixel and is unverified.\n"
-    "- Mars elevation units are not stored in the file metadata and still need confirming from the USGS documentation."
-)
+st.subheader("How this site could help")
+st.markdown("\n".join(f"- {u}" for u in t["exploration_use"]))
+if isinstance(site.get("notes"), str):
+    st.caption(f"Site notes: {site['notes']}")
